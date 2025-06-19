@@ -39,10 +39,13 @@ def get_nearest_svf_gvi_bvi(lat, lon):
 st.set_page_config(layout="wide")
 st.title("🗺️ 부산대학교 지도 기반 PET 예측")
 
+# 결과 출력용 공간 미리 정의
+result_placeholder = st.empty()
+
 # 지도 표시 (부산대학교 건설관 기준)
 m = folium.Map(location=[35.2323, 129.0797], zoom_start=17)
 m.add_child(folium.LatLngPopup())
-st_data = st_folium(m, width=700, height=500)
+st_data = st_folium(m, width=700, height=400)  # height 줄여서 결과 보이기 쉽게
 
 # ------------------ 5. 사용자 클릭 처리 ------------------
 if st_data["last_clicked"]:
@@ -51,9 +54,6 @@ if st_data["last_clicked"]:
 
     try:
         svf, gvi, bvi = get_nearest_svf_gvi_bvi(lat, lon)
-
-        st.info(f"📍 클릭 위치: 위도 {lat:.6f}, 경도 {lon:.6f}")
-        st.write(f"☀️ SVF: {svf:.3f}, 🌿 GVI: {gvi:.3f}, 🏢 BVI: {bvi:.3f}")
 
         # 고정 기상 입력값
         air_temp = 25.0
@@ -68,8 +68,13 @@ if st_data["last_clicked"]:
             "WindSpeed": wind_speed
         }])
         pet = model.predict(input_df)[0]
-        st.success(f"🔥 예측 PET: {pet:.2f} °C")
+
+        # 결과를 상단에 표시
+        result_placeholder.success(
+            f"📍 위도: {lat:.6f}, 경도: {lon:.6f}\n"
+            f"☀️ SVF: {svf:.3f}, 🌿 GVI: {gvi:.3f}, 🏢 BVI: {bvi:.3f}, 🔥 PET: {pet:.2f} °C"
+        )
     except Exception as e:
-        st.error(f"❌ 예측 중 오류가 발생했습니다: {e}")
+        result_placeholder.error(f"❌ 예측 중 오류가 발생했습니다: {e}")
 else:
     st.info("지도를 클릭해 위치를 선택하세요.")
