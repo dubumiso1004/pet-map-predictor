@@ -13,12 +13,21 @@ model = load_model()
 
 # ------------------ 2. 측정 데이터 로딩 ------------------
 def dms_to_decimal(dms_str):
-    parts = list(map(float, str(dms_str).split(";")))
-    return parts[0] + parts[1]/60 + parts[2]/3600
+    try:
+        parts = list(map(float, str(dms_str).split(";")))
+        return parts[0] + parts[1]/60 + parts[2]/3600
+    except:
+        return None
 
-df = pd.read_excel("total_svf_gvi_bvi_250613.xlsx", sheet_name="gps 포함")
-df["Lat_decimal"] = df["Lat"].apply(dms_to_decimal)
-df["Lon_decimal"] = df["Lon"].apply(dms_to_decimal)
+# 엑셀 파일 불러오기 (파일명이 정확히 일치해야 함)
+try:
+    df = pd.read_excel("total_svf_gvi_bvi_250613.xlsx", sheet_name="gps 포함")
+    df = df.dropna(subset=["Lat", "Lon", "SVF", "GVI", "BVI"])
+    df["Lat_decimal"] = df["Lat"].apply(dms_to_decimal)
+    df["Lon_decimal"] = df["Lon"].apply(dms_to_decimal)
+except Exception as e:
+    st.error(f"❌ 엑셀 파일을 불러오지 못했습니다: {e}")
+    st.stop()
 
 # ------------------ 3. 최근접 지점 SVF/GVI/BVI 추정 함수 ------------------
 def get_nearest_svf_gvi_bvi(lat, lon):
@@ -40,22 +49,27 @@ if st_data["last_clicked"]:
     lat = st_data["last_clicked"]["lat"]
     lon = st_data["last_clicked"]["lng"]
 
-    svf, gvi, bvi = get_nearest_svf_gvi_bvi(lat, lon)
+    try:
+        svf, gvi, bvi = get_nearest_svf_gvi_bvi(lat, lon)
 
-    st.info(f"📍 클릭 위치: 위도 {lat:.6f}, 경도 {lon:.6f}")
-    st.write(f"☀️ 추정 SVF: {svf:.3f}, 🌿 GVI: {gvi:.3f}, 🏢 BVI: {bvi:.3f}")
+        st.info(f"📍 클릭 위치: 위도 {lat:.6f}, 경도 {lon:.6f}")
+        st.write(f"☀️ SVF: {svf:.3f}, 🌿 GVI: {gvi:.3f}, 🏢 BVI: {bvi:.3f}")
 
-    # 고정 기상 입력값
-    air_temp = 25.0
-    humidity = 50.0
-    wind_speed = 1.0
+        # 고정 기상 입력값
+        air_temp = 25.0
+        humidity = 50.0
+        wind_speed = 1.0
 
-    # 예측 실행
-    input_df = pd.DataFrame([{
-        "SVF": svf, "GVI": gvi, "BVI": bvi,
-        "AirTemperature": air_temp,
-        "Humidity": humidity,
-        "WindSpeed": wind_speed
-    }])
-    pet = model.predict(input_df)[0]
-    st.success(f"🔥 예측 PET: {pet:.2f} °C")
+        # 예측 실행
+        input_df = pd.DataFrame([{ 
+            "SVF": svf, "GVI": gvi, "BVI": bvi,
+            "AirTemperature": air_temp,
+            "Humidity": humidity,
+            "WindSpeed": wind_speed
+        }])
+        pet = model.predict(input_df)[0]
+        st.success(f"🔥 예측 PET: {pet:.2f} °C")
+    except Exception as e:
+        st.error(f"❌ 예측 중 오류가 발생했습니다: {e}")
+else:
+    st.info("지도를 클릭해 위치를 선택하세요.")
